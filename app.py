@@ -4,6 +4,7 @@ import httpx
 import threading
 from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
 import os
+import uvicorn
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -68,3 +69,7 @@ async def start_transcription(request: TranscriptionRequest):
     except Exception as e:
         return {"error": f"Could not open socket: {str(e)}"}
 
+# Start FastAPI app with Uvicorn, binding to the port defined by Render
+if __name__ == "__main__":
+    port = os.getenv("PORT", 8000)  # Get the port from environment variables
+    uvicorn.run(app, host="0.0.0.0", port=int(port))  # Bind to port dynamically
