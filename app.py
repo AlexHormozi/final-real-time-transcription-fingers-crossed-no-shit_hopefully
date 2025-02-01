@@ -1,6 +1,11 @@
 import httpx
 import threading
-from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
+from deepgram import (
+    DeepgramClient,
+    DeepgramClientOptions,
+    LiveTranscriptionEvents,
+    LiveOptions,
+)
 
 # URL for the realtime streaming audio you would like to transcribe
 URL = "http://stream.live.vc.bbcmedia.co.uk/bbc_world_service"
@@ -11,25 +16,26 @@ DEEPGRAM_API_KEY = 'd60c00514729244e27d97f343003520cdb9404ef'
 def main():
     try:
         # Create a Deepgram client using your API key
-        deepgram = DeepgramClient(api_key=DEEPGRAM_API_KEY)
-
+        deepgram: DeepgramClient = DeepgramClient(api_key=DEEPGRAM_API_KEY)
+        
         # Create a synchronous websocket connection to Deepgram
-        dg_connection = deepgram.transcription.live()
+        dg_connection = deepgram.listen.websocket.v("1")
 
         # Define a callback to handle incoming transcript messages
-        def on_message(result, **kwargs):
-            sentence = result['channel']['alternatives'][0]['transcript']
-            if sentence:
-                print(f"Speaker: {sentence}")
+        def on_message(self, result, **kwargs):
+            sentence = result.channel.alternatives[0].transcript
+            if len(sentence) == 0:
+                return
+            print(f"speaker: {sentence}")
 
         # Register the transcript handler
         dg_connection.on(LiveTranscriptionEvents.Transcript, on_message)
 
-        # Prepare connection options (using model "nova-2")
+        # Prepare connection options (using model "nova-2" as per docs)
         options = LiveOptions(model="nova-2")
 
         # Start the connection (synchronously)
-        if not dg_connection.start(options):
+        if dg_connection.start(options) is False:
             print("Failed to start connection")
             return
 
