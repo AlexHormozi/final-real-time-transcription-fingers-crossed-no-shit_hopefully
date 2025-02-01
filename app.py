@@ -9,12 +9,8 @@ from deepgram import (
 # URL for the realtime streaming audio you would like to transcribe
 URL = "http://stream.live.vc.bbcmedia.co.uk/bbc_world_service"
 
-# Your Deepgram API key (Make sure to set it in environment variables on Render)
-import os
-DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
-
-if not DEEPGRAM_API_KEY:
-    raise ValueError("Deepgram API key is missing. Set it as an environment variable.")
+# Your Deepgram API key
+DEEPGRAM_API_KEY = 'd60c00514729244e27d97f343003520cdb9404ef'
 
 def main():
     try:
@@ -61,7 +57,7 @@ def main():
         myHttp = threading.Thread(target=myThread)
         myHttp.start()
 
-        # Keep the process running
+        # Wait for user input to stop recording
         input("\n\nPress Enter to stop recording...\n\n")
         lock_exit.acquire()
         exit_flag = True
