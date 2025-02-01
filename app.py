@@ -9,7 +9,7 @@ import os
 app = FastAPI()
 
 # Set up Deepgram API key (secure this with environment variables)
-DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY", "your_deepgram_api_key_here")
+DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY", "d60c00514729244e27d97f343003520cdb9404ef")
 URL = "http://stream.live.vc.bbcmedia.co.uk/bbc_world_service"
 
 # Define a model for the incoming request data
