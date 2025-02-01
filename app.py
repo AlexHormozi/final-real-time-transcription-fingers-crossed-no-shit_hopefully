@@ -1,22 +1,26 @@
-# app.py
-
-import os
+from fastapi import FastAPI
+from pydantic import BaseModel
 import httpx
 import threading
 from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
+import os
 
-# Retrieve your Deepgram API key from environment variables
-DEEPGRAM_API_KEY = os.getenv('d60c00514729244e27d97f343003520cdb9404ef')
+# Initialize FastAPI app
+app = FastAPI()
 
-# URL for the realtime streaming audio you would like to transcribe
+# Set up Deepgram API key (secure this with environment variables)
+DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY", "your_deepgram_api_key_here")
 URL = "http://stream.live.vc.bbcmedia.co.uk/bbc_world_service"
 
-def main():
+# Define a model for the incoming request data
+class TranscriptionRequest(BaseModel):
+    model: str = "nova-2"  # Default model
+
+@app.post("/transcribe")
+async def start_transcription(request: TranscriptionRequest):
     try:
         # Initialize the Deepgram client with the API key
         deepgram = DeepgramClient(api_key=DEEPGRAM_API_KEY)
-
-        # Create a websocket connection to Deepgram
         dg_connection = deepgram.listen.websocket.v("1")
 
         def on_message(self, result, **kwargs):
@@ -27,18 +31,16 @@ def main():
 
         dg_connection.on(LiveTranscriptionEvents.Transcript, on_message)
 
-        # Connect to websocket
-        options = LiveOptions(model="nova-2")
+        # Options for transcription based on the model provided in the request
+        options = LiveOptions(model=request.model)
 
-        print("\n\nPress Enter to stop recording...\n\n")
         if not dg_connection.start(options):
-            print("Failed to start connection")
-            return
+            return {"error": "Failed to start connection"}
 
         lock_exit = threading.Lock()
         exit = False
 
-        # Define a worker thread
+        # Worker thread to handle audio stream
         def myThread():
             with httpx.stream("GET", URL) as r:
                 for data in r.iter_bytes():
@@ -46,30 +48,23 @@ def main():
                     if exit:
                         break
                     lock_exit.release()
-
                     dg_connection.send(data)
 
-        # Start the worker thread
         myHttp = threading.Thread(target=myThread)
         myHttp.start()
 
         # Signal finished
-        input("")
+        input("Press Enter to stop recording...\n")
         lock_exit.acquire()
         exit = True
         lock_exit.release()
 
-        # Wait for the HTTP thread to close and join
         myHttp.join()
 
-        # Indicate that we've finished
         dg_connection.finish()
 
-        print("Finished")
+        return {"message": "Transcription finished successfully"}
 
     except Exception as e:
-        print(f"Could not open socket: {e}")
-        return
+        return {"error": f"Could not open socket: {str(e)}"}
 
-if __name__ == "__main__":
-    main()
