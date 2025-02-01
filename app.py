@@ -13,6 +13,11 @@ app = FastAPI()
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY", "d60c00514729244e27d97f343003520cdb9404ef")
 URL = "http://stream.live.vc.bbcmedia.co.uk/bbc_world_service"
 
+# Basic root route to avoid 404 errors
+@app.get("/")
+async def read_root():
+    return {"message": "Welcome to the Deepgram Transcription API"}
+
 # Define a model for the incoming request data
 class TranscriptionRequest(BaseModel):
     model: str = "nova-2"  # Default model
