@@ -1,73 +1,68 @@
+# app.py
+
+import os
 import httpx
 import threading
-from deepgram import (
-    DeepgramClient,
-    DeepgramClientOptions,
-    LiveTranscriptionEvents,
-    LiveOptions,
-)
+from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
+
+# Retrieve your Deepgram API key from environment variables
+DEEPGRAM_API_KEY = os.getenv('d60c00514729244e27d97f343003520cdb9404ef')
 
 # URL for the realtime streaming audio you would like to transcribe
 URL = "http://stream.live.vc.bbcmedia.co.uk/bbc_world_service"
 
-# Your Deepgram API key
-DEEPGRAM_API_KEY = 'd60c00514729244e27d97f343003520cdb9404ef'
-
 def main():
     try:
-        # Create a Deepgram client using your API key
-        deepgram: DeepgramClient = DeepgramClient(api_key=DEEPGRAM_API_KEY)
-        
-        # Create a synchronous websocket connection to Deepgram
+        # Initialize the Deepgram client with the API key
+        deepgram = DeepgramClient(api_key=DEEPGRAM_API_KEY)
+
+        # Create a websocket connection to Deepgram
         dg_connection = deepgram.listen.websocket.v("1")
 
-        # Define a callback to handle incoming transcript messages
         def on_message(self, result, **kwargs):
             sentence = result.channel.alternatives[0].transcript
             if len(sentence) == 0:
                 return
             print(f"speaker: {sentence}")
 
-        # Register the transcript handler
         dg_connection.on(LiveTranscriptionEvents.Transcript, on_message)
 
-        # Prepare connection options (using model "nova-2" as per docs)
+        # Connect to websocket
         options = LiveOptions(model="nova-2")
 
-        # Start the connection (synchronously)
-        if dg_connection.start(options) is False:
+        print("\n\nPress Enter to stop recording...\n\n")
+        if not dg_connection.start(options):
             print("Failed to start connection")
             return
 
         lock_exit = threading.Lock()
-        exit_flag = False  # using a local flag to indicate when to exit
+        exit = False
 
-        # Define a worker thread that streams audio data using httpx
+        # Define a worker thread
         def myThread():
-            nonlocal exit_flag
             with httpx.stream("GET", URL) as r:
                 for data in r.iter_bytes():
                     lock_exit.acquire()
-                    if exit_flag:
-                        lock_exit.release()
+                    if exit:
                         break
                     lock_exit.release()
+
                     dg_connection.send(data)
 
-        # Start the worker thread to fetch audio and send it to Deepgram
+        # Start the worker thread
         myHttp = threading.Thread(target=myThread)
         myHttp.start()
 
-        # Wait for user input to stop recording
-        input("\n\nPress Enter to stop recording...\n\n")
+        # Signal finished
+        input("")
         lock_exit.acquire()
-        exit_flag = True
+        exit = True
         lock_exit.release()
 
-        # Wait for the HTTP thread to finish
+        # Wait for the HTTP thread to close and join
         myHttp.join()
 
-        # Close the Deepgram connection gracefully
+        # Indicate that we've finished
         dg_connection.finish()
 
         print("Finished")
