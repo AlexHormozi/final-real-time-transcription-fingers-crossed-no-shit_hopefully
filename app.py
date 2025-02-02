@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import httpx
-import threading
+import asyncio
 from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
 import os
 import uvicorn
@@ -27,47 +27,32 @@ async def start_transcription(request: TranscriptionRequest):
     try:
         # Initialize the Deepgram client with the API key
         deepgram = DeepgramClient(api_key=DEEPGRAM_API_KEY)
-        dg_connection = deepgram.listen.websocket.v("1")
+        dg_connection = deepgram.listen.live.v("1")  # ✅ FIXED: Correct WebSocket method
 
-        def on_message(self, result, **kwargs):
+        async def on_message(result, **kwargs):  # ✅ FIXED: Removed 'self'
             sentence = result.channel.alternatives[0].transcript
-            if len(sentence) == 0:
-                return
-            print(f"speaker: {sentence}")
+            if sentence:
+                print(f"Speaker: {sentence}")
 
         dg_connection.on(LiveTranscriptionEvents.Transcript, on_message)
 
         # Options for transcription based on the model provided in the request
         options = LiveOptions(model=request.model)
 
-        if not dg_connection.start(options):
+        if not await dg_connection.start(options):  # ✅ FIXED: Added 'await'
             return {"error": "Failed to start connection"}
 
-        lock_exit = threading.Lock()
-        exit = False
+        async def send_audio():
+            async with httpx.AsyncClient() as client:
+                async with client.stream("GET", URL) as response:
+                    async for chunk in response.aiter_bytes():
+                        await dg_connection.send(chunk)
 
-        # Worker thread to handle audio stream
-        def myThread():
-            with httpx.stream("GET", URL) as r:
-                for data in r.iter_bytes():
-                    lock_exit.acquire()
-                    if exit:
-                        break
-                    lock_exit.release()
-                    dg_connection.send(data)
+        # Start streaming the audio asynchronously
+        await send_audio()
 
-        myHttp = threading.Thread(target=myThread)
-        myHttp.start()
-
-        # Signal finished
-        input("Press Enter to stop recording...\n")
-        lock_exit.acquire()
-        exit = True
-        lock_exit.release()
-
-        myHttp.join()
-
-        dg_connection.finish()
+        # Finish transcription
+        await dg_connection.finish()
 
         return {"message": "Transcription finished successfully"}
 
