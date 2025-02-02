@@ -1,6 +1,4 @@
-fastapi
-uvicorn
-deepgram-sdk
-httpx
-pydantic
-python-dotenv
+Flask==2.2.3
+httpx==0.24.0
+deepgram-sdk==3.8.0
+gunicorn==20.1.0
