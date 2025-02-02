@@ -27,9 +27,9 @@ async def start_transcription(request: TranscriptionRequest):
     try:
         # Initialize the Deepgram client with the API key
         deepgram = DeepgramClient(api_key=DEEPGRAM_API_KEY)
-        dg_connection = deepgram.listen.live.v("1")  # ✅ FIXED: Correct WebSocket method
+        dg_connection = deepgram.listen.live.v("1")  # Correct WebSocket method
 
-        async def on_message(result, **kwargs):  # ✅ FIXED: Removed 'self'
+        async def on_message(result, **kwargs):  # Async callback without 'self'
             sentence = result.channel.alternatives[0].transcript
             if sentence:
                 print(f"Speaker: {sentence}")
@@ -39,7 +39,8 @@ async def start_transcription(request: TranscriptionRequest):
         # Options for transcription based on the model provided in the request
         options = LiveOptions(model=request.model)
 
-        if not await dg_connection.start(options):  # ✅ FIXED: Added 'await'
+        # Remove await since start() returns a bool
+        if not dg_connection.start(options):
             return {"error": "Failed to start connection"}
 
         async def send_audio():
@@ -51,8 +52,8 @@ async def start_transcription(request: TranscriptionRequest):
         # Start streaming the audio asynchronously
         await send_audio()
 
-        # Finish transcription
-        await dg_connection.finish()
+        # Finish transcription (remove await as finish() is synchronous)
+        dg_connection.finish()
 
         return {"message": "Transcription finished successfully"}
 
@@ -63,4 +64,3 @@ async def start_transcription(request: TranscriptionRequest):
 if __name__ == "__main__":
     port = os.getenv("PORT", 8000)  # Get the port from environment variables
     uvicorn.run(app, host="0.0.0.0", port=int(port))  # Bind to port dynamically
-
