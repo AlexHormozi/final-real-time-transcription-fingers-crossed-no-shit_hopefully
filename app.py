@@ -1,10 +1,9 @@
-# app.py
 import os
-from flask import Flask, request, jsonify
-import httpx
-import logging
+import time
 import threading
-from deepgram import DeepgramClient, DeepgramClientOptions, LiveTranscriptionEvents, LiveOptions
+from flask import Flask, request, jsonify, Response
+import httpx
+from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
 
 app = Flask(__name__)
 
@@ -21,7 +20,6 @@ def stream_audio(dg_connection, audio_url, exit_event):
                 dg_connection.send(chunk)
     finally:
         dg_connection.finish()
-from flask import Response
 
 @app.route("/stream_transcription", methods=["GET"])
 def stream_transcription():
