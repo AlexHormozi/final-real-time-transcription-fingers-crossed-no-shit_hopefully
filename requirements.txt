@@ -1,4 +1,4 @@
 Flask==2.2.3
-httpx==0.24.0
+httpx>=0.25.2
 deepgram-sdk==3.8.0
 gunicorn==20.1.0
