@@ -1,16 +1,21 @@
+from flask import Flask, request, jsonify, Response
+from flask_cors import CORS
 import os
 import time
 import threading
-from flask import Flask, request, jsonify, Response
 import httpx
 from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
 
 app = Flask(__name__)
 
+# Initialize CORS with your Flask app, allowing requests from your Bubble app
+CORS(app, origins=["https://testing-voi-ce--translati.bubbleapps.io"])
+
 # Deepgram API key and default audio URL
 DEEPGRAM_API_KEY = "d60c00514729244e27d97f343003520cdb9404ef"
 DEFAULT_AUDIO_URL = "http://stream.live.vc.bbcmedia.co.uk/bbc_world_service"
 
+# Function to stream audio to Deepgram
 def stream_audio(dg_connection, audio_url, exit_event):
     try:
         with httpx.stream("GET", audio_url) as response:
@@ -21,6 +26,7 @@ def stream_audio(dg_connection, audio_url, exit_event):
     finally:
         dg_connection.finish()
 
+# Route to stream transcription
 @app.route("/stream_transcription", methods=["GET"])
 def stream_transcription():
     def generate():
@@ -30,6 +36,7 @@ def stream_transcription():
             time.sleep(1)
     return Response(generate(), content_type='text/event-stream')
 
+# Route to start transcription
 @app.route("/transcribe", methods=["POST"])
 def transcribe():
     """
