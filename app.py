@@ -63,3 +63,4 @@ async def start_transcription(request: TranscriptionRequest):
 if __name__ == "__main__":
     port = os.getenv("PORT", 8000)  # Get the port from environment variables
     uvicorn.run(app, host="0.0.0.0", port=int(port))  # Bind to port dynamically
+
