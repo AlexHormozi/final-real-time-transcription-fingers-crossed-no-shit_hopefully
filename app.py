@@ -29,7 +29,7 @@ async def start_transcription(request: TranscriptionRequest):
         deepgram = DeepgramClient(api_key=DEEPGRAM_API_KEY)
         dg_connection = deepgram.listen.live.v("1")  # Correct WebSocket method
 
-        async def on_message(result, **kwargs):  # Async callback without 'self'
+        async def on_message(result, **kwargs):  # Removed 'self'
             sentence = result.channel.alternatives[0].transcript
             if sentence:
                 print(f"Speaker: {sentence}")
@@ -39,7 +39,7 @@ async def start_transcription(request: TranscriptionRequest):
         # Options for transcription based on the model provided in the request
         options = LiveOptions(model=request.model)
 
-        # Remove await since start() returns a bool
+        # Remove await since start() returns a boolean (synchronous)
         if not dg_connection.start(options):
             return {"error": "Failed to start connection"}
 
@@ -47,12 +47,12 @@ async def start_transcription(request: TranscriptionRequest):
             async with httpx.AsyncClient() as client:
                 async with client.stream("GET", URL) as response:
                     async for chunk in response.aiter_bytes():
-                        await dg_connection.send(chunk)
+                        dg_connection.send(chunk)  # Remove await here as well
 
         # Start streaming the audio asynchronously
         await send_audio()
 
-        # Finish transcription (remove await as finish() is synchronous)
+        # Finish transcription (synchronous call)
         dg_connection.finish()
 
         return {"message": "Transcription finished successfully"}
@@ -63,4 +63,4 @@ async def start_transcription(request: TranscriptionRequest):
 # Start FastAPI app with Uvicorn, binding to the port defined by Render
 if __name__ == "__main__":
     port = os.getenv("PORT", 8000)  # Get the port from environment variables
-    uvicorn.run(app, host="0.0.0.0", port=int(port))  # Bind to port dynamically
+    uvicorn.run(app, host="0.0.0.0", port=int(port))
