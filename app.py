@@ -21,6 +21,16 @@ def stream_audio(dg_connection, audio_url, exit_event):
                 dg_connection.send(chunk)
     finally:
         dg_connection.finish()
+from flask import Response
+
+@app.route("/stream_transcription", methods=["GET"])
+def stream_transcription():
+    def generate():
+        while not exit_event.is_set():
+            if result_holder["transcript"]:
+                yield f"data: {result_holder['transcript']}\n\n"
+            time.sleep(1)
+    return Response(generate(), content_type='text/event-stream')
 
 @app.route("/transcribe", methods=["POST"])
 def transcribe():
